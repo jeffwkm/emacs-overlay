@@ -119,6 +119,21 @@ let
                     };
                  });
 
+  emacs-30-pgtk = let base = super.lib.makeOverridable (mkGitEmacs "emacs-pgtk-30" ../repos/emacs/emacs-30.json) { withSQLite3 = true; withWebP = true; withXwidgets = false; withPgtk = true; };
+                   # TODO: remove when we drop support for < 23.05, and instead move withTreeSitter to the above line with the other arguments
+                   maybeOverridden = if (super.lib.hasAttr "treeSitter" base || super.lib.hasAttr "withTreeSitter" base) then base.override { withTreeSitter = true; } else base;
+                   emacs = emacs-30-pgtk;
+               in maybeOverridden.overrideAttrs (
+                 oa: {
+                   patches = oa.patches ++ [
+                     # XXX: #318
+                     ./bytecomp-revert.patch
+                   ];
+                    passthru = oa.passthru // {
+                        pkgs = oa.passthru.pkgs.overrideScope (eself: esuper: { inherit emacs; });
+                    };
+                 });
+
   emacs-unstable = let base = super.lib.makeOverridable (mkGitEmacs "emacs-unstable" ../repos/emacs/emacs-unstable.json) { withSQLite3 = true; withWebP = true; };
                        # TODO: remove when we drop support for < 23.05, and instead move withTreeSitter to the above line with the other arguments
                        maybeOverridden = if (super.lib.hasAttr "treeSitter" base || super.lib.hasAttr "withTreeSitter" base) then base.override { withTreeSitter = true; } else base;
@@ -176,6 +191,8 @@ in
   inherit emacs-git emacs-unstable;
 
   inherit emacs-pgtk emacs-unstable-pgtk;
+
+  inherit emacs-30-pgtk;
 
   inherit emacs-git-nox emacs-unstable-nox;
 
